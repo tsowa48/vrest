@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ $1.php [L]
+RewriteRule /?\.htaccess$ - [L,R=404]
+#RewriteRule ^head$ - [L,R=404]
+RewriteRule ^head\.php$ - [L,R=404]

@@ -8,6 +8,9 @@ if($method === 'GET') {//Read
   $stop = $_GET['stop'];
   $max = $_GET['max'];
 
+  $lon = $_GET['lon'];
+  $lat = $_GET['lat'];
+
   if((isset($id) && is_numeric($id)) ||
      (isset($start) && is_numeric($start)) ||
      (isset($stop) && is_numeric($stop)) ||
@@ -21,6 +24,12 @@ if($method === 'GET') {//Read
       $items = pg_query($psql, 'select id, name, start, stop, key, max from vote where '.$condition.' order by start;');
     else
       $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start;');
+  } else if((isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
+    //TODO: Выбрать все голосования по GPS-координатам
+
+    //Найти ближайший адрес по GPS
+    //Найти для данного адреса все голосования
+    //Найти все голосования для вех родителей (parent) этого адреса
   } else {
     $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start;');
   }
@@ -43,9 +52,7 @@ if($method === 'GET') {//Read
   $stop = $_POST['stop'];
   $max = $_POST['max'];
   $aids = $_POST['aids'];//<----------------------------------------------------
-  /* TODO: 1) При вставке в таблицу VA нужно спускаться по дереву отмеченных адресов до листьев без потомков.
-     TODO: 2) Добавить все эти листья в таблицу VA.
-  */
+  //TODO: ПРОСТО ДОБАВИТЬ aids В БАЗУ
   if(isset($start) && is_numeric($start) &&
      isset($stop) && is_numeric($stop) &&
      isset($max) && is_numeric($max) &&

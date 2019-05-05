@@ -16,11 +16,11 @@ if($method === 'GET') {//Read
     $condition .= (isset($vid) ? (strlen($condition) > 0 ? ' and ' : '').'vid='.$vid : '');
 
     if(strlen($condition) > 0)
-      $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from contender K where '.$condition.' order by K.position;');
+      $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K where '.$condition.' order by K.position;');
     else
-      $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from contender K order by K.position;');
+      $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K order by K.position;');
   } else {
-    $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from contender K order by K.position;');
+    $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K order by K.position;');
   }
   $json = '[';
   while($item = pg_fetch_row($items)) {
@@ -45,7 +45,7 @@ if($method === 'GET') {//Read
       http_response_code(423);//Blocked
     else {
       $values = '\''.htmlspecialchars($name).'\', \''.htmlspecialchars($description).'\', '.$position.', '.$vid;
-      $id = pg_fetch_row(pg_query($psql, 'insert into contender(name, description, position, vid) values ('.$values.') returning id;'))[0];
+      $id = pg_fetch_row(pg_query($psql, 'insert into rival(name, description, position, vid) values ('.$values.') returning id;'))[0];
       header('Location: ?id='.$id);
       echo '[{ "id": '.$id.', "name":"'.htmlspecialchars($name).'", "description":"'.htmlspecialchars($description).'", "position":'.$position.', "vid":'.$vid.'}]';
       http_response_code(201);
@@ -75,7 +75,7 @@ if($method === 'GET') {//Read
         $condition .= (isset($vid) ? (strlen($condition) > 0 ? ', ' : '').'vid='.$vid : '');
         $condition .= (isset($name) ? (strlen($condition) > 0 ? ', ' : '').'name=\''.htmlspecialchars($name).'\'' : '');
         $condition .= (isset($description) ? (strlen($condition) > 0 ? ', ' : '').'description=\''.htmlspecialchars($description).'\'' : '');
-        pg_query($psql, 'update contender set '.$condition.';');
+        pg_query($psql, 'update rival set '.$condition.';');
       } else {
         http_response_code(400);
       }
@@ -92,7 +92,7 @@ if($method === 'GET') {//Read
     if($currentTime > intval($_start))
       http_response_code(423);//Blocked
     else {
-      pg_query($psql, 'delete from contender where id='.$id.';');
+      pg_query($psql, 'delete from rival where id='.$id.';');
       http_response_code(404);
     }
   } else {

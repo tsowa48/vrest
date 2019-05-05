@@ -1,12 +1,20 @@
 <?php
 include_once $_SERVER['DOCUMENT_ROOT'].'/head.php';
 
-if($method === 'GET') {//Read //TODO: refactoring
+if($method === 'GET') {//Read
   $name = $_GET['name'];//string
   $parent = $_GET['parent'];//long
   $id = $_GET['id'];//long
+  $lon = $_GET['lon'];//double
+  $lat = $_GET['lat'];//double
+
   $full = $_GET['full'];//boolean (0,1)
-  if(isset($id) && is_numeric($id)) {
+  
+  if((isset($id) && is_numeric($id)) ||
+     isset($name) ||
+     (isset($parent) && is_numeric($parent)) ||
+     (isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
+
     if(isset($full)) {
       $parentId = $id;
       $json = '[';
@@ -19,54 +27,24 @@ if($method === 'GET') {//Read //TODO: refactoring
         $json = substr($json, 0, -2);
       $json .= ']';
       echo $json;
-    } else {
-      $items = pg_query($psql, 'select id, name, parent, lon, lat from address where id='.$id.' order by name;');
-      $json = '[';
-      while($item = pg_fetch_row($items)) {
-        $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "parent":'.$item[2].', "lon":'.($item[3]??0.0).', "lat":'.($item[4]??0.0).'},'.PHP_EOL;
-      }
-      if(strlen($json) > 2)
-        $json = substr($json, 0, -2);
-      $json .= ']';
-      echo $json;
+      exit();
     }
-  } else if(isset($parent) && is_numeric($parent)) {
-    if(isset($name)) {
-      $items = pg_query($psql, 'select id, name, parent, lon, lat from address where parent='.$parent.' and name=\''.htmlspecialchars($name).'\' order by name;');
-    } else {
-      $items = pg_query($psql, 'select id, name, parent, lon, lat from address where parent='.$parent.' order by name;');
-    }
-    $json = '[';
-    while($item = pg_fetch_row($items)) {
-      $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "parent":'.$item[2].', "lon":'.($item[3]??0.0).', "lat":'.($item[4]??0.0).'},'.PHP_EOL;
-    }
-    if(strlen($json) > 2)
-      $json = substr($json, 0, -2);
-    $json .= ']';
-    echo $json;
-  } else if(isset($name)) {
-    $items = pg_query($psql, 'select id, name, parent, lon, lat from address where name=\''.htmlspecialchars($name).'\' order by name;');
-    $json = '[';
-    while($item = pg_fetch_row($items)) {
-      $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "parent":'.$item[2].', "lon":'.($item[3]??0.0).', "lat":'.($item[4]??0.0).'},'.PHP_EOL;
-    }
-    if(strlen($json) > 2)
-      $json = substr($json, 0, -2);
-    $json .= ']';
-    echo $json;
-  } else if(!isset($name) && !isset($parent) && !isset($id)) {
-    $items = pg_query($psql, 'select id, name, parent, lon, lat from address order by name;');
-    $json = '[';
-    while($item = pg_fetch_row($items)) {
-      $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "parent":'.$item[2].', "lon":'.($item[3]??0.0).', "lat":'.($item[4]??0.0).'},'.PHP_EOL;
-    }
-    if(strlen($json) > 2)
-      $json = substr($json, 0, -2);
-    $json .= ']';
-    echo $json;
-  } else {
-    http_response_code(400);
   }
+  $condition = (isset($id) ? 'id='.$id : '');
+  $condition .= (isset($name) ? (strlen($condition) > 0 ? ' and ' : '').'name=\''.htmlspecialchars($name).'\'' : '');
+  $condition .= (isset($parent) ? (strlen($condition) > 0 ? ' and ' : '').'parent='.$parent : '');
+  $condition .= (isset($lon) && isset($lat) ? (strlen($condition) > 0 ? ' and ' : '').
+                'sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B)' : '');//Поиск ближайшего адреса по координатам
+
+  $items = pg_query($psql, 'select id, name, parent, lon, lat from address'.(strlen($condition) > 0 ? ' where '.$condition : ' ').'order by name;');
+  $json = '[';
+  while($item = pg_fetch_row($items)) {
+    $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "parent":'.$item[2].', "lon":'.($item[3]??0.0).', "lat":'.($item[4]??0.0).'},'.PHP_EOL;
+  }
+  if(strlen($json) > 2)
+  $json = substr($json, 0, -2);
+  $json .= ']';
+  echo $json;
 } else if($method === 'POST' && $is_local) {//Create
   $name = $_POST['name'];//string
   $parent = $_POST['parent'];//long

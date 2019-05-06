@@ -25,11 +25,17 @@ if($method === 'GET') {//Read
     else
       $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start;');
   } else if((isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
-    //TODO: Выбрать все голосования по GPS-координатам
+    //TODO: (TEST) Выбрать все голосования по GPS-координатам
 
-    //Найти ближайший адрес по GPS
-    //Найти для данного адреса все голосования
-    //Найти все голосования для вех родителей (parent) этого адреса
+    // + Найти ближайший адрес по GPS
+    // + Найти голосования для данного адреса
+    // + Найти голосования для всех родителей (parent) этого адреса
+    $currentAddress = pg_fetch_row(pg_query($psql, 'select A.id, A.parent from address A where sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B);'))[0];
+    $items = pg_query($psql, 'with recursive addr(aid, parent) as
+    (select A.id, A.parent from address A where sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B)
+    union all select P.id, P.parent from addr A, address P where A.parent = P.id)
+    select V.id, V.name, V.start, V.stop, V.key, V.max from addr A, va VA, vote V where A.aid=VA.aid and V.id=VA.vid order by V.start;');
+
   } else {
     $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start;');
   }
@@ -39,33 +45,34 @@ if($method === 'GET') {//Read
     $addresses = pg_fetch_all(pg_query($psql, 'select aid from va where vid='.$item[0].';'));
     $json_addr = '['.implode(',', $addresses).']';
     $privateKey = $currentTime <= intval($item[3]) ? '': $item[4];//<----------------- return PRIVATE KEY
-    $json .= '{ "id": '.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "address":'.$json_addr.' "max":'.$item[5].'},'.PHP_EOL;
+    $json .= '{ "id": '.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "address":'.$json_addr.', "max":'.$item[5].'},'.PHP_EOL;
   }
   if(strlen($json) > 2)
     $json = substr($json, 0, -2);
   $json .= ']';
   echo $json;
 } else if($method === 'POST' && $is_local) {//Create
-  $id = $_POST['id'];
   $name = $_POST['name'];
   $start = $_POST['start'];
   $stop = $_POST['stop'];
   $max = $_POST['max'];
-  $aids = $_POST['aids'];//<----------------------------------------------------
-  //TODO: ПРОСТО ДОБАВИТЬ aids В БАЗУ
+  $aids = $_POST['aids'];
+
   if(isset($start) && is_numeric($start) &&
      isset($stop) && is_numeric($stop) &&
      isset($max) && is_numeric($max) &&
      isset($name)) {
 
     //TODO: generate PRIVATE KEY
-    $privateKey = '123';
+    $privateKey = 'privateKey';
 
-    $values = '\''.htmlspecialchars($name).'\', '.$start.', '.$stop.', '.$privateKey.', '.abs($max);
+    $values = '\''.htmlspecialchars($name).'\', '.$start.', '.$stop.', \''.$privateKey.'\', '.abs($max);
     $id = pg_fetch_row(pg_query($psql, 'insert into vote(name, start, stop, key, max) values ('.$values.') returning id;'))[0];
-    //TODO: insert aid[] into VA where vid=$id
+    $aids_ = explode(',', $aids);
+    $values = $id.','.implode('), ('.$id.',', $aids_);
+    pg_query($psql, 'insert into va(vid,aid) values ('.$values.');');
     header('Location: ?id='.$id);
-    echo '[{ "id": '.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "max":'.abs($max).'}]';
+    echo '[{ "id": '.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "address":['.$aids.'], "max":'.abs($max).'}]';
     http_response_code(201);
   } else {
     http_response_code(400); 
@@ -79,7 +86,7 @@ if($method === 'GET') {//Read
   $start = $_PUT['start'];
   $stop = $_PUT['stop'];
   $max = $_PUT['max'];
-  $aids = $_POST['aids'];//<----------------------------------------------------
+  $aids = $_PUT['aids'];
   if(isset($id) && is_numeric($id) &&
      ((isset($start) && is_numeric($start)) ||
      (isset($stop) && is_numeric($stop)) ||
@@ -96,7 +103,9 @@ if($method === 'GET') {//Read
       http_response_code(423);//Blocked
     else {
       pg_query($psql, 'delete from va where vid='.$id.';');
-      //TODO: insert aid[] into VA where vid=$id
+      $aids = explode(',', $aids);
+      $values = $id.','.implode('), ('.$id.',', $aids);
+      pg_query($psql, 'insert into va(vid,aid) values ('.$values.');');
       pg_query($psql, 'update vote set '.$condition.';');
     }
   } else {

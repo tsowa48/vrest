@@ -34,7 +34,7 @@ if($method === 'GET') {//Read
   $condition .= (isset($name) ? (strlen($condition) > 0 ? ' and ' : '').'name=\''.htmlspecialchars($name).'\'' : '');
   $condition .= (isset($parent) ? (strlen($condition) > 0 ? ' and ' : '').'parent='.$parent : '');
   $condition .= (isset($lon) && isset($lat) ? (strlen($condition) > 0 ? ' and ' : '').
-                'sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B)' : '');//Поиск ближайшего адреса по координатам
+                'sqrt(pow(lon-'.$lon.',2)+pow(lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B)' : '');//Поиск ближайшего адреса по координатам
 
   $items = pg_query($psql, 'select id, name, parent, lon, lat from address'.(strlen($condition) > 0 ? ' where '.$condition : ' ').'order by name;');
   $json = '[';
@@ -84,7 +84,7 @@ if($method === 'GET') {//Read
   $id = intval($_DELETE['id'])??null;
   if(isset($id) && is_numeric($id)) {
     //Recursive delete ID and all childs
-    pg_query($psql, 'with recursive addr(parent, id) as (select parent, id from address where id='.$id.' union all select p.parent, p.id from addr pr, address p where pr.id = p.parent) delete from address where id in (select id from addr;');
+    pg_query($psql, 'with recursive addr(parent, id) as (select parent, id from address where id='.$id.' union all select p.parent, p.id from addr pr, address p where pr.id = p.parent) delete from address where id in (select id from addr);');
   }
   http_response_code(404);
 } else {

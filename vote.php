@@ -20,13 +20,9 @@ if($method === 'GET') {//Read
     $condition .= (isset($stop) ? (strlen($condition) > 0 ? ' and ' : '').'stop<='.$stop : '');
     $condition .= (isset($max) ? (strlen($condition) > 0 ? ' and ' : '').'max='.abs($max) : '');
 
-    if(strlen($condition) > 0)
-      $items = pg_query($psql, 'select id, name, start, stop, key, max from vote where '.$condition.' order by start;');
-    else
-      $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start;');
+    $items = pg_query($psql, 'select id, name, start, stop, key, max from vote '.(strlen($condition) > 0 ? 'where '.$condition : '').' order by start;');
   } else if((isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
-    //TODO: (TEST) Выбрать все голосования по GPS-координатам
-
+    //TODO TEST: Выбрать все голосования по GPS-координатам
     // + Найти ближайший адрес по GPS
     // + Найти голосования для данного адреса
     // + Найти голосования для всех родителей (parent) этого адреса
@@ -42,7 +38,7 @@ if($method === 'GET') {//Read
   $json = '[';
   $currentTime = intval(time());
   while($item = pg_fetch_row($items)) {
-    $addresses = pg_fetch_all(pg_query($psql, 'select aid from va where vid='.$item[0].';'));
+    $addresses = pg_fetch_all_columns(pg_query($psql, 'select aid from va where vid='.$item[0].';'), 0);
     $json_addr = '['.implode(',', $addresses).']';
     $privateKey = $currentTime <= intval($item[3]) ? '': $item[4];//<----------------- return PRIVATE KEY
     $json .= '{ "id": '.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "address":'.$json_addr.', "max":'.$item[5].'},'.PHP_EOL;
@@ -63,8 +59,8 @@ if($method === 'GET') {//Read
      isset($max) && is_numeric($max) &&
      isset($name)) {
 
-    //TODO: generate PRIVATE KEY
-    $privateKey = 'privateKey';
+    //TODO: generate PRIVATE KEY (Paillier)
+    $privateKey = uniqid('', true);//<---------------------------------------
 
     $values = '\''.htmlspecialchars($name).'\', '.$start.', '.$stop.', \''.$privateKey.'\', '.abs($max);
     $id = pg_fetch_row(pg_query($psql, 'insert into vote(name, start, stop, key, max) values ('.$values.') returning id;'))[0];
@@ -107,6 +103,22 @@ if($method === 'GET') {//Read
       $values = $id.','.implode('), ('.$id.',', $aids);
       pg_query($psql, 'insert into va(vid,aid) values ('.$values.');');
       pg_query($psql, 'update vote set '.$condition.';');
+    }
+  } else {
+    http_response_code(400);
+  }
+} else if($method === 'DELETE' && $is_local) {//Delete
+  parse_str(file_get_contents('php://input'), $_DELETE);
+  $currentTime = intval(time());
+
+  $id = $_DELETE['id'];
+  if(isset($id) && is_numeric($id)) {
+    $_start = pg_fetch_row(pg_query($psql, 'select start from vote where id='.$id.';'))[0];
+    if($currentTime > intval($_start))
+      http_response_code(423);//Blocked
+    else {
+      pg_query($psql, 'delete from va where vid='.$id.'; delete from rival where vid='.$id.'; delete from result where vid='.$id.'; delete from vote where id='.$id.';');
+      http_response_code(404);
     }
   } else {
     http_response_code(400);

@@ -7,7 +7,7 @@ if($method === 'GET') {//Read
   //$description = $_GET['description'];
   $position = $_GET['position'];
   $vid = $_GET['vid'];
-
+  $condition = '';
   if((isset($id) && is_numeric($id)) ||
      (isset($position) && is_numeric($position)) ||
      (isset($vid) && is_numeric($vid))) {
@@ -16,12 +16,10 @@ if($method === 'GET') {//Read
     $condition .= (isset($vid) ? (strlen($condition) > 0 ? ' and ' : '').'vid='.$vid : '');
 
     if(strlen($condition) > 0)
-      $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K where '.$condition.' order by K.position;');
-    else
-      $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K order by K.position;');
-  } else {
-    $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K order by K.position;');
+      $condition = 'where '.$condition;
   }
+  $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K '.$condition.' order by K.position;');
+
   $json = '[';
   while($item = pg_fetch_row($items)) {
     $json .= '{ "id": '.$item[0].', "name":"'.$item[1].'", "description":"'.$item[2].'", "position":'.$item[3].', "vid":'.$item[4].'},'.PHP_EOL;

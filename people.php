@@ -50,31 +50,36 @@ if($method === 'GET' && $is_local) {//Read
   } else {
     http_response_code(400);
   }
-} else if($method === 'PUT' && $is_local) {//Update
+} else if($method === 'PUT') {//Update
   parse_str(file_get_contents('php://input'), $_PUT);
   $id = $_PUT['id']??null;
-  $fio = $_PUT['fio']??null;
-  $birth = $_PUT['birth']??null;//<----------------------- (добавить проверки возможности изменения)
-  $male = $_PUT['male']??null;//<----------------------- (добавить проверки возможности изменения)
-  $secret = $_PUT['secret']??null;//TODO: В какой момент менять?
-  $aid = $_PUT['aid']??null;//TODO: если есть голосование по этому адресу в данное время, то не изменять его?
+  if($is_local) {
+    $fio = $_PUT['fio']??null;
+    $birth = $_PUT['birth']??null;//<----------------------- (добавить проверки возможности изменения)
+    $male = $_PUT['male']??null;//<----------------------- (добавить проверки возможности изменения)
+    $aid = $_PUT['aid']??null;//TODO: если есть голосование по этому адресу в данное время, то не изменять его?
 
-  if((isset($id) && is_numeric($id)) ||
-     isset($fio) ||
-     (isset($birth) && is_numeric($birth)) ||
-     (isset($male) && is_numeric($male)) ||
-     isset($secret) ||
-     (isset($aid) && is_numeric($aid))) {
-    $condition = (isset($fio) ? 'fio=\''.htmlspecialchars($fio).'\'' : '');
-    $condition .= (isset($birth) ? (strlen($condition) > 0 ? ', ' : '').'birth='.$birth : '');
-    $condition .= (isset($male) ? (strlen($condition) > 0 ? ', ' : '').'male='.$male : '');
-    $condition .= (isset($aid) ? (strlen($condition) > 0 ? ', ' : '').'aid='.$aid : '');
+    if((isset($id) && is_numeric($id)) &&
+       (isset($fio) ||
+       (isset($birth) && is_numeric($birth)) ||
+       (isset($male) && is_numeric($male)) ||
+       (isset($aid) && is_numeric($aid)))) {
+      $condition = (isset($fio) ? 'fio=\''.htmlspecialchars($fio).'\'' : '');
+      $condition .= (isset($birth) ? (strlen($condition) > 0 ? ', ' : '').'birth='.$birth : '');
+      $condition .= (isset($male) ? (strlen($condition) > 0 ? ', ' : '').'male='.$male : '');
+      $condition .= (isset($aid) ? (strlen($condition) > 0 ? ', ' : '').'aid='.$aid : '');
 
-    $condition .= (isset($secret) ? (strlen($condition) > 0 ? ', ' : '').'secret=\''.htmlspecialchars($secret).'\'' : '');
-
-    pg_query($psql, 'update people set '.$condition.' where id='.$id.';');
+      pg_query($psql, 'update people set '.$condition.' where id='.$id.';');
+    } else {
+      http_response_code(400);
+    }
   } else {
-    http_response_code(400);
+    $secret = $_PUT['secret']??null;//TODO: В какой момент менять?
+    if(isset($id) && is_numeric($id) && isset($secret)) {
+      pg_query($psql, 'update people set secret=\''.htmlspecialchars($secret).'\' where id='.$id.';');
+    } else {
+      http_response_code(400);
+    }
   }
 } else if($method === 'DELETE' && $is_local) {//Delete
   parse_str(file_get_contents('php://input'), $_DELETE);

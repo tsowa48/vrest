@@ -20,7 +20,7 @@ if($method === 'GET') {//Read
     $condition .= (isset($stop) ? (strlen($condition) > 0 ? ' and ' : '').'stop<='.$stop : '');
     $condition .= (isset($max) ? (strlen($condition) > 0 ? ' and ' : '').'max='.abs($max) : '');
 
-    $items = pg_query($psql, 'select id, name, start, stop, key, max from vote '.(strlen($condition) > 0 ? 'where '.$condition : '').' order by start;');
+    $items = pg_query($psql, 'select id, name, start, stop, key, max from vote '.(strlen($condition) > 0 ? 'where '.$condition : '').' order by start, name;');
   } else if((isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
     //TODO TEST: Выбрать все голосования по GPS-координатам
     // + Найти ближайший адрес по GPS
@@ -30,20 +30,16 @@ if($method === 'GET') {//Read
     $items = pg_query($psql, 'with recursive addr(aid, parent) as
     (select A.id, A.parent from address A where sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B)
     union all select P.id, P.parent from addr A, address P where A.parent = P.id)
-    select V.id, V.name, V.start, V.stop, V.key, V.max from addr A, va VA, vote V where A.aid=VA.aid and V.id=VA.vid order by V.start;');
+    select V.id, V.name, V.start, V.stop, V.key, V.max from addr A, va VA, vote V where A.aid=VA.aid and V.id=VA.vid order by V.start, V.name;');
 
   } else {
-    $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start;');
+    $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start, name;');
   }
   $json = '[';
   $currentTime = intval(time());
   while($item = pg_fetch_row($items)) {
-    $addresses = pg_fetch_all_columns(pg_query($psql, 'select aid from va where vid='.$item[0].';'), 0);
-    $rivals = pg_fetch_all_columns(pg_query($psql, 'select id from rival where vid='.$item[0].';'), 0);
-    $json_addresses = '['.implode(',', $addresses).']';
-    $json_rivals = '['.implode(',', $rivals).']';
     $privateKey = $currentTime <= intval($item[3]) ? '': $item[4];//<----------------- return PRIVATE KEY
-    $json .= '{ "id":'.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "rival":'.$json_rivals.', address":'.$json_addresses.', "max":'.$item[5].'},'.PHP_EOL;
+    $json .= '{ "id":'.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "max":'.$item[5].'},'.PHP_EOL;
   }
   if(strlen($json) > 2)
     $json = substr($json, 0, -2);
@@ -70,7 +66,7 @@ if($method === 'GET') {//Read
     $values = $id.','.implode('), ('.$id.',', $aids_);
     pg_query($psql, 'insert into va(vid,aid) values ('.$values.');');
     header('Location: ?id='.$id);
-    echo '[{ "id":'.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "rival":[], address":['.$aids.'], "max":'.abs($max).'}]';
+    echo '[{ "id":'.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "max":'.abs($max).'}]';
     http_response_code(201);
   } else {
     http_response_code(400); 

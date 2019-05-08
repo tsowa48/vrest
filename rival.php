@@ -49,7 +49,7 @@ if($method === 'GET') {//Read
       http_response_code(201);
     }
   } else {
-    http_response_code(400); 
+    http_response_code(400);
   }
 } else if($method === 'PUT' && $is_local) {//Update
   parse_str(file_get_contents('php://input'), $_PUT);
@@ -73,7 +73,7 @@ if($method === 'GET') {//Read
         $condition .= (isset($vid) ? (strlen($condition) > 0 ? ', ' : '').'vid='.$vid : '');
         $condition .= (isset($name) ? (strlen($condition) > 0 ? ', ' : '').'name=\''.htmlspecialchars($name).'\'' : '');
         $condition .= (isset($description) ? (strlen($condition) > 0 ? ', ' : '').'description=\''.htmlspecialchars($description).'\'' : '');
-        pg_query($psql, 'update rival set '.$condition.';');
+        pg_query($psql, 'update rival set '.$condition.' where id='.$id.';');
       } else {
         http_response_code(400);
       }

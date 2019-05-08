@@ -104,7 +104,7 @@ if($method === 'GET') {//Read
       $aids = explode(',', $aids);
       $values = $id.','.implode('), ('.$id.',', $aids);
       pg_query($psql, 'insert into va(vid,aid) values ('.$values.');');
-      pg_query($psql, 'update vote set '.$condition.';');
+      pg_query($psql, 'update vote set '.$condition.' where id='.$id.';');
     }
   } else {
     http_response_code(400);

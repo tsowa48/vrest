@@ -39,9 +39,11 @@ if($method === 'GET') {//Read
   $currentTime = intval(time());
   while($item = pg_fetch_row($items)) {
     $addresses = pg_fetch_all_columns(pg_query($psql, 'select aid from va where vid='.$item[0].';'), 0);
-    $json_addr = '['.implode(',', $addresses).']';
+    $rivals = pg_fetch_all_columns(pg_query($psql, 'select id from rival where vid='.$item[0].';'), 0);
+    $json_addresses = '['.implode(',', $addresses).']';
+    $json_rivals = '['.implode(',', $rivals).']';
     $privateKey = $currentTime <= intval($item[3]) ? '': $item[4];//<----------------- return PRIVATE KEY
-    $json .= '{ "id": '.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "address":'.$json_addr.', "max":'.$item[5].'},'.PHP_EOL;
+    $json .= '{ "id":'.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "rival":'.$json_rivals.', address":'.$json_addresses.', "max":'.$item[5].'},'.PHP_EOL;
   }
   if(strlen($json) > 2)
     $json = substr($json, 0, -2);
@@ -68,7 +70,7 @@ if($method === 'GET') {//Read
     $values = $id.','.implode('), ('.$id.',', $aids_);
     pg_query($psql, 'insert into va(vid,aid) values ('.$values.');');
     header('Location: ?id='.$id);
-    echo '[{ "id": '.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "address":['.$aids.'], "max":'.abs($max).'}]';
+    echo '[{ "id":'.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "rival":[], address":['.$aids.'], "max":'.abs($max).'}]';
     http_response_code(201);
   } else {
     http_response_code(400); 

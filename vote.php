@@ -22,6 +22,14 @@ if($method === 'GET') {//Read
 
     $items = pg_query($psql, 'select id, name, start, stop, key, max from vote '.(strlen($condition) > 0 ? 'where '.$condition : '').' order by start, name;');
   } else if((isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
+    //TODO: Возвращать голосования если указан secret и он совпадает с тем, что в адресе
+    //Сначала найти ближайший адрес по GPS и вернуть aid
+    //Если (select count(*) from people where aid=$aid and secret=$secret) > 0 тогда искать голосования
+
+    //TODO: Возвращать голосования если (start - birth >= 18)
+    //$currentDate = date_create_from_format('d.m.Y|', date("d.m.Y"));
+    //date_diff($currentDate, $birth)->y >= 18
+    
     //TODO TEST: Выбрать все голосования по GPS-координатам
     // + Найти ближайший адрес по GPS
     // + Найти голосования для данного адреса
@@ -39,7 +47,7 @@ if($method === 'GET') {//Read
   $currentTime = intval(time());
   while($item = pg_fetch_row($items)) {
     $privateKey = $currentTime <= intval($item[3]) ? '': $item[4];//<----------------- return PRIVATE KEY
-    $json .= '{ "id":'.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "max":'.$item[5].'},'.PHP_EOL;
+    $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "max":'.$item[5].'},'.PHP_EOL;
   }
   if(strlen($json) > 2)
     $json = substr($json, 0, -2);
@@ -66,7 +74,7 @@ if($method === 'GET') {//Read
     $values = $id.','.implode('), ('.$id.',', $aids_);
     pg_query($psql, 'insert into va(vid,aid) values ('.$values.');');
     header('Location: ?id='.$id);
-    echo '[{ "id":'.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "max":'.abs($max).'}]';
+    echo '[{"id":'.$id.', "name":"'.$name.'", "start":'.$start.', "stop":'.$stop.', "key":"", "max":'.abs($max).'}]';
     http_response_code(201);
   } else {
     http_response_code(400); 
@@ -124,4 +132,3 @@ if($method === 'GET') {//Read
 } else {
   http_response_code(405);//Not allowed
 }
-?>

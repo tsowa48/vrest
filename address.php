@@ -91,4 +91,3 @@ if($method === 'GET') {//Read
 } else {
   http_response_code(405);
 }
-?>

@@ -22,7 +22,7 @@ if($method === 'GET') {//Read
 
   $json = '[';
   while($item = pg_fetch_row($items)) {
-    $json .= '{ "id": '.$item[0].', "name":"'.$item[1].'", "description":"'.$item[2].'", "position":'.$item[3].', "vid":'.$item[4].'},'.PHP_EOL;
+    $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "description":"'.$item[2].'", "position":'.$item[3].', "vid":'.$item[4].'},'.PHP_EOL;
   }
   if(strlen($json) > 2)
     $json = substr($json, 0, -2);
@@ -45,7 +45,7 @@ if($method === 'GET') {//Read
       $values = '\''.htmlspecialchars($name).'\', \''.htmlspecialchars($description).'\', '.$position.', '.$vid;
       $id = pg_fetch_row(pg_query($psql, 'insert into rival(name, description, position, vid) values ('.$values.') returning id;'))[0];
       header('Location: ?id='.$id);
-      echo '[{ "id": '.$id.', "name":"'.htmlspecialchars($name).'", "description":"'.htmlspecialchars($description).'", "position":'.$position.', "vid":'.$vid.'}]';
+      echo '[{"id":'.$id.', "name":"'.htmlspecialchars($name).'", "description":"'.htmlspecialchars($description).'", "position":'.$position.', "vid":'.$vid.'}]';
       http_response_code(201);
     }
   } else {
@@ -99,4 +99,3 @@ if($method === 'GET') {//Read
 } else {
   http_response_code(405);//Not allowed
 }
-?>

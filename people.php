@@ -11,20 +11,25 @@ if($method === 'GET' && $is_local) {//Read
 
   if((isset($id) && is_numeric($id)) ||
      isset($fio) ||
-     (isset($birth) && is_numeric($birth)) ||
      (isset($male) && is_numeric($male)) ||
      (isset($aid) && is_numeric($aid))) {
   
       $condition = (isset($id) ? 'id='.$id : '');
-      $condition .= (isset($fio) ? (strlen($condition) > 0 ? ' and ' : '').'fio=\''.htmlspecialchars($fio).'\'' : '');
-      $condition .= (isset($birth) ? (strlen($condition) > 0 ? ' and ' : '').'birth='.$birth : '');
+      $condition .= (isset($fio) ? (strlen($condition) > 0 ? ' and ' : '').'lower(fio) like \'%'.mb_strtolower(htmlspecialchars($fio)).'%\'' : '');
       $condition .= (isset($male) ? (strlen($condition) > 0 ? ' and ' : '').'male='.$male : '');
       $condition .= (isset($aid) ? (strlen($condition) > 0 ? ' and ' : '').'aid='.$aid : '');
+  }
+  if(isset($birth)) {
+    $birth = date_create_from_format('d.m.Y+|', htmlspecialchars($birth));
+    if($birth) {
+      $birth = $birth->format('d.m.Y');
+      $condition .= (strlen($condition) > 0 ? ' and ' : '').'birth=\''.$birth.'\'';
+    }
   }
   $items = pg_query($psql, 'select id, fio, birth, male, aid from people'.(strlen($condition) > 0 ? ' where '.$condition : ' ').'order by fio;');
   $json = '[';
   while($item = pg_fetch_row($items)) {
-    $json .= '{ "id": '.$item[0].', "fio":"'.$item[1].'", "birth":'.$item[2].', "male":'.$item[3].', "aid":'.$item[4].'},'.PHP_EOL;
+    $json .= '{"id":'.$item[0].', "fio":"'.$item[1].'", "birth":"'.$item[2].'", "male":'.$item[3].', "aid":'.$item[4].'},'.PHP_EOL;
   }
   if(strlen($json) > 2)
     $json = substr($json, 0, -2);
@@ -37,16 +42,22 @@ if($method === 'GET' && $is_local) {//Read
   //$secret = $_POST['secret'];
   $aid = $_POST['aid'];
 
-  if(isset($fio) &&
-     isset($birth) && is_numeric($birth) &&
+  if(isset($fio) && isset($birth) &&
      isset($male) && is_numeric($male) &&
      isset($aid) && is_numeric($aid)) {
 
-    $values = '\''.htmlspecialchars($fio).'\', '.$birth.', '.$male.', '.$aid;
-    $id = pg_fetch_row(pg_query($psql, 'insert into people(fio, birth, male, aid) values ('.$values.') returning id;'))[0];
-    header('Location: ?id='.$id);
-    echo '[{ "id": '.$id.', "fio":"'.htmlspecialchars($fio).'", "birth":'.$birth.', "male":'.$male.', "aid":'.$aid.'}]';
-    http_response_code(201);
+    $birth = date_create_from_format('d.m.Y+|', htmlspecialchars($birth));
+    if($birth) {
+      $birth = $birth->format('d.m.Y');
+      $male = (int)filter_var($male, FILTER_VALIDATE_BOOLEAN);
+      $values = '\''.htmlspecialchars($fio).'\', \''.$birth.'\', '.$male.', '.$aid;
+      $id = pg_fetch_row(pg_query($psql, 'insert into people(fio, birth, male, aid) values ('.$values.') returning id;'))[0];
+      header('Location: ?id='.$id);
+      echo '[{"id":'.$id.', "fio":"'.htmlspecialchars($fio).'", "birth":"'.$birth.'", "male":'.$male.', "aid":'.$aid.'}]';
+      http_response_code(201);
+    } else {
+      http_response_code(400);
+    }
   } else {
     http_response_code(400);
   }
@@ -54,29 +65,38 @@ if($method === 'GET' && $is_local) {//Read
   parse_str(file_get_contents('php://input'), $_PUT);
   $id = $_PUT['id']??null;
   if($is_local) {
-    $fio = $_PUT['fio']??null;
+    $fio = $_PUT['fio']??null;//TODO: запретить изменение aid и birth, если aid или pid участвует в голосовании
     $birth = $_PUT['birth']??null;//<----------------------- (добавить проверки возможности изменения)
     $male = $_PUT['male']??null;//<----------------------- (добавить проверки возможности изменения)
     $aid = $_PUT['aid']??null;//TODO: если есть голосование по этому адресу в данное время, то не изменять его?
 
     if((isset($id) && is_numeric($id)) &&
-       (isset($fio) ||
-       (isset($birth) && is_numeric($birth)) ||
-       (isset($male) && is_numeric($male)) ||
+       (isset($fio) || isset($birth) ||
+       (isset($male) && is_muneric($male)) ||
        (isset($aid) && is_numeric($aid)))) {
       $condition = (isset($fio) ? 'fio=\''.htmlspecialchars($fio).'\'' : '');
-      $condition .= (isset($birth) ? (strlen($condition) > 0 ? ', ' : '').'birth='.$birth : '');
       $condition .= (isset($male) ? (strlen($condition) > 0 ? ', ' : '').'male='.$male : '');
       $condition .= (isset($aid) ? (strlen($condition) > 0 ? ', ' : '').'aid='.$aid : '');
-
+      if(isset($birth)) {
+        $birth = date_create_from_format('d.m.Y+|', htmlspecialchars($birth));
+        if($birth) {
+          $birth = $birth->format('d.m.Y');
+          $condition .= (strlen($condition) > 0 ? ', ' : '').'birth=\''.$birth.'\'';
+        } else {
+          http_response_code(400);
+          exit();
+        }
+      }
       pg_query($psql, 'update people set '.$condition.' where id='.$id.';');
     } else {
       http_response_code(400);
     }
   } else {
-    $secret = $_PUT['secret']??null;//TODO: В какой момент менять?
-    if(isset($id) && is_numeric($id) && isset($secret)) {
-      pg_query($psql, 'update people set secret=\''.htmlspecialchars($secret).'\' where id='.$id.';');
+    $oldSecret = $_PUT['old']??null;
+    $newSecret = $_PUT['secret']??null;
+    if(isset($id) && is_numeric($id) && ($is_local || isset($oldSecret)) && isset($newSecret)) {
+      //Разрешить изменение secret без oldSecret, если is_local
+      pg_query($psql, 'update people set secret=\''.htmlspecialchars($newSecret).'\' where id='.$id.($is_local ? '' : ' and secret=\''.htmlspecialchars($oldSecret).'\'').';');
     } else {
       http_response_code(400);
     }
@@ -93,4 +113,3 @@ if($method === 'GET' && $is_local) {//Read
 } else {
   http_response_code(405);//Not allowed
 }
-?>

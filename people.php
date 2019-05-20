@@ -72,7 +72,7 @@ if($method === 'GET' && $is_local) {//Read
 
     if((isset($id) && is_numeric($id)) &&
        (isset($fio) || isset($birth) ||
-       (isset($male) && is_muneric($male)) ||
+       (isset($male) && is_numeric($male)) ||
        (isset($aid) && is_numeric($aid)))) {
       $condition = (isset($fio) ? 'fio=\''.htmlspecialchars($fio).'\'' : '');
       $condition .= (isset($male) ? (strlen($condition) > 0 ? ', ' : '').'male='.$male : '');

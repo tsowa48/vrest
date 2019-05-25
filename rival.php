@@ -20,14 +20,13 @@ if($method === 'GET') {//Read
   }
   $items = pg_query($psql, 'select K.id, K.name, K.description, K.position, K.vid from rival K '.$condition.' order by K.position;');
 
-  $json = '[';
+  $json = '';
   while($item = pg_fetch_row($items)) {
     $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "description":"'.$item[2].'", "position":'.$item[3].', "vid":'.$item[4].'},'.PHP_EOL;
   }
-  if(strlen($json) > 2)
+  if(strlen($json) > 0)
     $json = substr($json, 0, -2);
-  $json .= ']';
-  echo $json;
+  echo '[', $json, ']';
 } else if($method === 'POST' && $is_local) {//Create
   $name = $_POST['name'];
   $description = $_POST['description'];

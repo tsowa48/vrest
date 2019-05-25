@@ -17,16 +17,15 @@ if($method === 'GET') {//Read
 
     if(isset($full)) {
       $parentId = $id;
-      $json = '[';
+      $json = '';
       while($parentId !== 0) {
         $item = pg_fetch_row(pg_query($psql, 'select id, name, parent, lon, lat from address where id='.$parentId.' order by name;'));
         $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "parent":'.$item[2].', "lon":'.($item[3]??0.0).', "lat":'.($item[4]??0.0).'},'.PHP_EOL;
         $parentId = intval($item[2]);
       }
-      if(strlen($json) > 2)
+      if(strlen($json) > 0)
         $json = substr($json, 0, -2);
-      $json .= ']';
-      echo $json;
+      echo '[', $json, ']';
       exit();
     }
   }
@@ -38,14 +37,13 @@ if($method === 'GET') {//Read
                 //Поиск ближайшего адреса по координатам
 
   $items = pg_query($psql, 'select id, name, parent, lon, lat from address'.(strlen($condition) > 0 ? ' where '.$condition : ' ').'order by name;');
-  $json = '[';
+  $json = '';
   while($item = pg_fetch_row($items)) {
     $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "parent":'.$item[2].', "lon":'.($item[3]??0.0).', "lat":'.($item[4]??0.0).'},'.PHP_EOL;
   }
-  if(strlen($json) > 2)
-  $json = substr($json, 0, -2);
-  $json .= ']';
-  echo $json;
+  if(strlen($json) > 0)
+    $json = substr($json, 0, -2);
+  echo '[', $json, ']';
 } else if($method === 'POST' && $is_local) {//Create
   $name = $_POST['name'];//string
   $parent = $_POST['parent'];//long

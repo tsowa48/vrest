@@ -85,7 +85,7 @@ if($method === 'GET') {//Read
   $id = $_DELETE['id']??null;
   if(isset($id) && is_numeric($id)) {
     $currentTime = intval(time());
-    $_start = pg_fetch_row(pg_query($psql, 'select start from vote where id='.$vid.';'))[0];
+    $_start = pg_fetch_row(pg_query($psql, 'select V.start from vote V, rival R where R.id='.$id.' and R.vid=V.id;'))[0];
     if($currentTime > intval($_start))
       http_response_code(423);//Blocked
     else {
@@ -95,6 +95,7 @@ if($method === 'GET') {//Read
   } else {
     http_response_code(400);
   }
+} else if($method === 'OPTIONS') {
 } else {
   http_response_code(405);//Not allowed
 }

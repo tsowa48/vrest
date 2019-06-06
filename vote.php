@@ -10,7 +10,7 @@ if($method === 'GET') {//Read
 
   $lon = $_GET['lon'];
   $lat = $_GET['lat'];
-  $secret = $_GET['secret'];
+  $secret = $_GET['secret'];//TODO: move to header!
 
   if((isset($id) && is_numeric($id)) ||
      (isset($start) && is_numeric($start)) ||
@@ -129,6 +129,7 @@ if($method === 'GET') {//Read
   } else {
     http_response_code(400);
   }
+} else if($method === 'OPTIONS') {
 } else {
   http_response_code(405);//Not allowed
 }

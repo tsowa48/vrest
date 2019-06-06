@@ -86,6 +86,7 @@ if($method === 'GET') {//Read
     pg_query($psql, 'with recursive addr(parent, id) as (select parent, id from address where id='.$id.' union all select p.parent, p.id from addr pr, address p where pr.id = p.parent) delete from address where id in (select id from addr);');
   }
   http_response_code(404);
+} else if($method === 'OPTIONS') {
 } else {
   http_response_code(405);
 }

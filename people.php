@@ -109,6 +109,7 @@ if($method === 'GET' && $is_local) {//Read
   } else {
     http_response_code(400);
   }
+} else if($method === 'OPTIONS') {
 } else {
   http_response_code(405);//Not allowed
 }

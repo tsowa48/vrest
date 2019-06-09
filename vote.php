@@ -22,7 +22,8 @@ if($method === 'GET') {//Read
     $condition .= (isset($max) ? (strlen($condition) > 0 ? ' and ' : '').'max='.abs($max) : '');
 
     $items = pg_query($psql, 'select id, name, start, stop, key, max from vote '.(strlen($condition) > 0 ? 'where '.$condition : '').' order by start, name;');
-  } else if((isset($lon) && isset($lat) && is_double($lon) && is_double($lat)) && isset($secret)) {
+  } else if((isset($lon) && isset($lat) && is_double($lon+0) && is_double($lat+0)) && isset($secret)) {
+    
     //TODO TEST: + Возвращать голосования если указан secret и он совпадает с тем, что в адресе
     //THINK 1.1: Несколько одинаковых SECRET для одного AID
     //THINK 1.2: (посчитать общее количество одинаковых SECRET и вычесть количество одинаковых проголосовавших SECRET по данному AID. Пока > 0, то голосовать можно, иначе результат)
@@ -36,7 +37,7 @@ if($method === 'GET') {//Read
     // + Найти голосования для всех родителей (parent) этого адреса
     $currentAddress = pg_fetch_row(pg_query($psql, 'select A.id, A.parent from address A where sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B);'))[0];
     $items = pg_query($psql, 'with recursive addr(aid, parent) as
-    (select A.id, A.parent from address A, people P where P.aid=A.id and A.id='.$currentAddress[0].' and P.secret=\''.htmlspecialchars($secret).'\'
+    (select A.id, A.parent from address A, people P where P.aid=A.id and A.id='.$currentAddress.' and P.secret=\''.htmlspecialchars($secret).'\'
     union all select P.id, P.parent from addr A, address P where A.parent = P.id)
     select V.id, V.name, V.start, V.stop, V.key, V.max from addr A, va VA, vote V where
     V.start < extract(epoch from now() at time zone \'utc\') and A.aid=VA.aid and V.id=VA.vid order by V.start, V.name;');

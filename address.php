@@ -13,10 +13,15 @@ if($method === 'GET') {//Read
   if((isset($id) && is_numeric($id)) ||
      isset($name) ||
      (isset($parent) && is_numeric($parent)) ||
-     (isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
+     (isset($lon) && isset($lat) && is_double($lon + 0) && is_double($lat + 0))) {
 
-    if(isset($full)) {
-      $parentId = $id;
+    if(isset($full) && intval($full) === 1) {
+      $parentId;
+      if(isset($lon) && isset($lat)) {
+        $parentId = pg_fetch_row(pg_query($psql, 'select id from address where sqrt(pow(lon-'.$lon.',2)+pow(lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B);'))[0];
+      } else {
+        $parentId = $id;
+      }
       $json = '';
       while($parentId !== 0) {
         $item = pg_fetch_row(pg_query($psql, 'select id, name, parent, lon, lat from address where id='.$parentId.' order by name;'));
@@ -56,7 +61,7 @@ if($method === 'GET') {//Read
     (isset($lon) && isset($lat) ? ', '.doubleval($lon).', '.doubleval($lat) : '').') returning id;'))[0];
     header('Location: ?id='.$id);
     echo '[{"id":'.$id.', "name":"'.htmlspecialchars($name).'", "parent":'.(isset($parent) && is_numeric($parent) ? $parent : '').
-         ', "lon":'.(isset($lon) && is_double($lon) ? $lon : '0.0').', "lat":'.(isset($lat) && is_double($lat) ? $lat : '0.0').'}]';
+         ', "lon":'.(isset($lon) && is_double($lon+0) ? $lon : '0.0').', "lat":'.(isset($lat) && is_double($lat+0) ? $lat : '0.0').'}]';
     http_response_code(201);
   } else {
     http_response_code(400);
@@ -71,9 +76,9 @@ if($method === 'GET') {//Read
   $lat = doubleval($_PUT['lat'])??null;
   if(isset($id) && is_numeric($id) &&
      ((isset($name) && !empty($name)) ||
-     (isset($lon) && isset($lat) && is_double($lon) && is_double($lat)))) {
+     (isset($lon) && isset($lat) && is_double($lon+0) && is_double($lat+0)))) {
     $condition = (isset($name) && !empty($name) ? 'name=\''.htmlspecialchars($name).'\'' : '');
-    $condition .= (isset($lon) && isset($lat) && is_double($lon) && is_double($lat) ? (strlen($condition) > 0 ? ', ' : '').'lon='.$lon.', lat='.$lat : '');
+    $condition .= (isset($lon) && isset($lat) && is_double($lon+0) && is_double($lat+0) ? (strlen($condition) > 0 ? ', ' : '').'lon='.$lon.', lat='.$lat : '');
     pg_query($psql, 'update address set '.$condition.' where id='.$id.';');
   } else {
     http_response_code(400);

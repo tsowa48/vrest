@@ -27,14 +27,13 @@ if($method === 'GET' && $is_local) {//Read
     }
   }
   $items = pg_query($psql, 'select id, fio, birth, male, aid from people'.(strlen($condition) > 0 ? ' where '.$condition : ' ').'order by fio;');
-  $json = '[';
+  $json = '';
   while($item = pg_fetch_row($items)) {
     $json .= '{"id":'.$item[0].', "fio":"'.$item[1].'", "birth":"'.$item[2].'", "male":'.$item[3].', "aid":'.$item[4].'},'.PHP_EOL;
   }
-  if(strlen($json) > 2)
+  if(strlen($json) > 0)
     $json = substr($json, 0, -2);
-  $json .= ']';
-  echo $json;
+  echo '[', $json, ']';
 } else if($method === 'POST' && $is_local) {//Create
   $fio = $_POST['fio'];
   $birth = $_POST['birth'];
@@ -110,6 +109,7 @@ if($method === 'GET' && $is_local) {//Read
   } else {
     http_response_code(400);
   }
+} else if($method === 'OPTIONS') {
 } else {
   http_response_code(405);//Not allowed
 }

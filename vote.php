@@ -10,6 +10,7 @@ if($method === 'GET') {//Read
 
   $lon = $_GET['lon'];
   $lat = $_GET['lat'];
+  $secret = $_GET['secret'];//TODO: move to header!
 
   if((isset($id) && is_numeric($id)) ||
      (isset($start) && is_numeric($start)) ||
@@ -21,38 +22,38 @@ if($method === 'GET') {//Read
     $condition .= (isset($max) ? (strlen($condition) > 0 ? ' and ' : '').'max='.abs($max) : '');
 
     $items = pg_query($psql, 'select id, name, start, stop, key, max from vote '.(strlen($condition) > 0 ? 'where '.$condition : '').' order by start, name;');
-  } else if((isset($lon) && isset($lat) && is_double($lon) && is_double($lat))) {
-    //TODO: Возвращать голосования если указан secret и он совпадает с тем, что в адресе
-    //Сначала найти ближайший адрес по GPS и вернуть aid
-    //Если (select count(*) from people where aid=$aid and secret=$secret) > 0 тогда искать голосования
+  } else if((isset($lon) && isset($lat) && is_double($lon+0) && is_double($lat+0)) && isset($secret)) {
+    
+    //TODO TEST: + Возвращать голосования если указан secret и он совпадает с тем, что в адресе
+    //THINK 1.1: Несколько одинаковых SECRET для одного AID
+    //THINK 1.2: (посчитать общее количество одинаковых SECRET и вычесть количество одинаковых проголосовавших SECRET по данному AID. Пока > 0, то голосовать можно, иначе результат)
 
     //TODO: Возвращать голосования если (start - birth >= 18)
     //$currentDate = date_create_from_format('d.m.Y|', date("d.m.Y"));
     //date_diff($currentDate, $birth)->y >= 18
     
-    //TODO TEST: Выбрать все голосования по GPS-координатам
     // + Найти ближайший адрес по GPS
-    // + Найти голосования для данного адреса
+    // + Найти голосования для данного адреса и SECRET
     // + Найти голосования для всех родителей (parent) этого адреса
     $currentAddress = pg_fetch_row(pg_query($psql, 'select A.id, A.parent from address A where sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B);'))[0];
     $items = pg_query($psql, 'with recursive addr(aid, parent) as
-    (select A.id, A.parent from address A where sqrt(pow(A.lon-'.$lon.',2)+pow(A.lat-'.$lat.',2))=(select min(sqrt(pow(B.lon-'.$lon.',2)+pow(B.lat-'.$lat.',2))) from address B)
+    (select A.id, A.parent from address A, people P where P.aid=A.id and A.id='.$currentAddress.' and P.secret=\''.htmlspecialchars($secret).'\'
     union all select P.id, P.parent from addr A, address P where A.parent = P.id)
-    select V.id, V.name, V.start, V.stop, V.key, V.max from addr A, va VA, vote V where A.aid=VA.aid and V.id=VA.vid order by V.start, V.name;');
+    select V.id, V.name, V.start, V.stop, V.key, V.max from addr A, va VA, vote V where
+    V.start < extract(epoch from now() at time zone \'utc\') and A.aid=VA.aid and V.id=VA.vid order by V.start, V.name;');
 
   } else {
     $items = pg_query($psql, 'select id, name, start, stop, key, max from vote order by start, name;');
   }
-  $json = '[';
+  $json = '';
   $currentTime = intval(time());
   while($item = pg_fetch_row($items)) {
     $privateKey = $currentTime <= intval($item[3]) ? '': $item[4];//<----------------- return PRIVATE KEY
     $json .= '{"id":'.$item[0].', "name":"'.$item[1].'", "start":'.$item[2].', "stop":'.$item[3].', "key":"'.$privateKey.'", "max":'.$item[5].'},'.PHP_EOL;
   }
-  if(strlen($json) > 2)
+  if(strlen($json) > 0)
     $json = substr($json, 0, -2);
-  $json .= ']';
-  echo $json;
+  echo '[', $json, ']';
 } else if($method === 'POST' && $is_local) {//Create
   $name = $_POST['name'];
   $start = $_POST['start'];
@@ -129,6 +130,7 @@ if($method === 'GET') {//Read
   } else {
     http_response_code(400);
   }
+} else if($method === 'OPTIONS') {
 } else {
   http_response_code(405);//Not allowed
 }
